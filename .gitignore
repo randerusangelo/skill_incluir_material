@@ -1,0 +1,11 @@
+# Ignorar a pasta venv (ambiente virtual)
+venv/
+
+# Ignorar pastas __pycache__ (códigos compilados)
+__pycache__/
+
+# Ignorar diretórios de configurações locais do VSCode
+.vscode/
+
+# Ignorar arquivos de ambiente
+.env
