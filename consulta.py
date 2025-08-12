@@ -62,6 +62,7 @@ def incluir_estoque(material: str, quantidade: int, setor: int,
     if not material or not isinstance(quantidade, int) or quantidade <= 0 or setor is None:
         raise ValueError("Parâmetros inválidos (material, quantidade > 0, setor obrigatório).")
 
+    material_up = material.upper()
     cn = _conn()
 
     try:
@@ -72,7 +73,7 @@ def incluir_estoque(material: str, quantidade: int, setor: int,
                         SELECT TOP (1) id, quantidade
                         FROM dbo.produtos
                         WHERE UPPER(nome) = UPPER(?)
-                    """, (material,))
+                    """, (material_up,))
                 row = cur.fetchone()
                 
                 if row:
@@ -90,7 +91,7 @@ def incluir_estoque(material: str, quantidade: int, setor: int,
                         INSERT INTO dbo.produtos (nome, quantidade, preco, localizacao_id)
                         OUTPUT INSERTED.id
                         VALUES (?, ?, 0, ?)
-                    """, (material, quantidade, loc_id))
+                    """, (material_up, quantidade, loc_id))
                     new_id = int(cur.fetchone()[0])
                     cn.commit()
                     return new_id
