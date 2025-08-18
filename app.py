@@ -1,6 +1,12 @@
 from flask import Flask, request, jsonify
 from consulta import buscar_localizacao, incluir_estoque
 import traceback
+import os 
+import logging
+from logging.handlers import RotatingFileHandler
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -78,7 +84,7 @@ def alexa_webhook():
             def has(slot):
                 return slots.get(slot, {}).get("value") not in (None, "")
                 
-            # 1) Se já está tudo confirmado e preenchido, FINALIZA (grava e responde)
+
             if confirmation == "CONFIRMED" and has("material") and has("quantidade") and has("setor"):
                 try:
                     material   = slots["material"]["value"]
@@ -95,18 +101,15 @@ def alexa_webhook():
                     print(traceback.format_exc())
                     return jsonify(build_response("Desculpe, ocorreu um erro ao gravar os dados.", end_session=True))
 
-            # 2) Se o usuário negou na confirmação final do intent
+
             if confirmation == "DENIED":
                 return jsonify(build_response("Ok, operação cancelada."))
 
-            # 3) Caso contrário, ainda está no fluxo -> delega para Alexa continuar
             if dialog_state != "COMPLETED":
                 return jsonify(delegate(intent_obj))
 
-            # 4) (fallback) COMPLETED sem confirmação
             return jsonify(build_response("Ok, operação cancelada."))
 
-        # Intents padrão
         if intent_name in ("AMAZON.CancelIntent", "AMAZON.StopIntent"):
             return jsonify({
                 "version": "1.0",
@@ -116,16 +119,51 @@ def alexa_webhook():
                 }
             })
 
-        # Fallback
         return jsonify(build_response("Desculpe, não entendi o pedido.", end_session=False))
 
-    # SessionEnded: não fale nada; só ack e log se quiser
     if r_type == "SessionEndedRequest":
-        # print("SessionEnded:", payload["request"].get("reason"), payload["request"].get("error"))
         return jsonify({"version": "1.0"}), 200
 
-    # Outros tipos
     return jsonify(build_response("Requisição não suportada.", end_session=True))
 
+def _configure_logging():
+    debug_flag = _is_debug()
+    if debug_flag:
+        app.logger.setLevel(logging.DEBUG)
+        return
+    os.makedirs("logs", exist_ok=True)
+    handler = RotatingFileHandler("logs/app.log", maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    handler.setLevel(logging.INFO)
+    app.logger.addHandler(handler)
+    app.logger.setLevel(logging.INFO)
+
+def _is_debug() -> bool:
+    return str(os.getenv("DEBUG", "0")).lower() in ("1", "true", "yes", "on")
+
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    _configure_logging()
+
+    HOST = os.getenv("HOST", "0.0.0.0")
+    PORT = int(os.getenv("PORT", "5000"))
+
+    if _is_debug():
+        app.run(host=HOST, port=PORT, debug=True)
+    else:
+        from waitress import serve
+        THREADS          = int(os.getenv("THREADS", "4"))
+        CONNECTION_LIMIT = int(os.getenv("CONNECTION_LIMIT", "100"))
+        CHANNEL_TIMEOUT  = int(os.getenv("CHANNEL_TIMEOUT", "30"))
+
+        app.logger.info("Iniciando Waitress em %s:%s (threads=%s, conn_limit=%s, timeout=%ss)",
+                        HOST, PORT, THREADS, CONNECTION_LIMIT, CHANNEL_TIMEOUT)
+
+        serve(
+            app,
+            host=HOST,
+            port=PORT,
+            threads=THREADS,
+            connection_limit=CONNECTION_LIMIT,
+            channel_timeout=CHANNEL_TIMEOUT,
+            ident="alexa-estoque"
+        )
