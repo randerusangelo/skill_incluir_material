@@ -27,6 +27,7 @@ def delegate(updated_intent=None):
             "shouldEndSession": False
         }
     }
+    
     if updated_intent:
         resp["response"]["directives"][0]["updatedIntent"] = updated_intent
     return resp
@@ -49,12 +50,10 @@ def alexa_webhook():
     
     r_type = payload['request']['type']
 
-    # Launch
     if r_type == 'LaunchRequest':
-        msg = "Olá! Para incluir no estoque, diga o nome do material."
+        msg = "Olá! Para incluir no estoque, diga o nome do item"
         return jsonify(build_response(msg, end_session=False))
-    
-    # Intent
+
     if r_type == 'IntentRequest':
         intent_obj  = payload["request"].get("intent", {}) or {}
         intent_name = intent_obj.get("name", "")
@@ -74,8 +73,6 @@ def alexa_webhook():
                 print(traceback.format_exc())
                 return jsonify(build_response("Ocorreu um erro ao buscar o material.", end_session=False))
             
-
-            # Inclusão de estoque
         if intent_name  in ("IncludeEstoqueIntent", "IncluirEstoqueIntent"):
             dialog_state = payload['request'].get('dialogState')
             confirmation = (intent_obj.get("confirmationStatus") or "NONE").upper()
@@ -84,7 +81,6 @@ def alexa_webhook():
             def has(slot):
                 return slots.get(slot, {}).get("value") not in (None, "")
                 
-
             if confirmation == "CONFIRMED" and has("material") and has("quantidade") and has("setor"):
                 try:
                     material   = slots["material"]["value"]
@@ -96,11 +92,10 @@ def alexa_webhook():
                 try:
                     incluir_estoque(material, quantidade, setor)
                     msg = f"Material {material} com quantidade {quantidade} incluído no setor {setor} com sucesso."
-                    return jsonify(build_response(msg, end_session=True))  # <<< sem diretivas aqui
+                    return jsonify(build_response(msg, end_session=True)) 
                 except Exception:
                     print(traceback.format_exc())
                     return jsonify(build_response("Desculpe, ocorreu um erro ao gravar os dados.", end_session=True))
-
 
             if confirmation == "DENIED":
                 return jsonify(build_response("Ok, operação cancelada."))
