@@ -10,9 +10,6 @@ O serviço roda em **dev** com Flask e em **produção** com **Waitress**.
 3. API grava no SQL Server (cria localização se necessário)  
 4. Alexa confirma a inclusão
 
-## Captura (Alexa Simulator)
-![Conversa no Alexa Simulator](images/simulator.png)
-
 ## Endpoints
 - `GET /health` — health-check
 - `POST /alexa` — webhook da Skill (LaunchRequest/IntentRequest)
