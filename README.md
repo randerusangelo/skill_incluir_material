@@ -30,7 +30,7 @@ O serviço roda em **dev** com Flask e em **produção** com **Waitress**.
 ```
 
 ## Pré‑requisitos
-- Python 3.10+
+- Python 3.12+
 - Driver ODBC 17 do SQL Server
 - Banco SQL Server acessível
 - Variáveis no `.env`
